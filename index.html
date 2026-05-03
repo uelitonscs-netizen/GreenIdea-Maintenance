@@ -86,7 +86,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:1
 /* CALENDAR */
 .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:12px;}
 .cal-day-header{text-align:center;font-size:10px;font-weight:700;color:var(--muted);padding:4px 0;}
-.cal-day{aspect-ratio:1;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;cursor:pointer;position:relative;}
+.cal-day{aspect-ratio:1;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;cursor:pointer;position:relative;border:none;background:none;font-family:var(--font);color:var(--text);-webkit-appearance:none;appearance:none;padding:0;width:100%;}
 .cal-day.today{background:var(--green);color:#fff;}
 .cal-day.has-event::after{content:'';position:absolute;bottom:3px;left:50%;transform:translateX(-50%);width:4px;height:4px;border-radius:50%;background:var(--amber);}
 .cal-day.today.has-event::after{background:#fff;}
@@ -157,7 +157,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:1
     <div class="kpi-grid" id="dash-kpis"></div>
     <div class="section-title t" data-en="ALERTS" data-pt="ALERTAS">ALERTS</div>
     <div class="card" id="dash-alerts" style="padding:0 16px"></div>
-    <div class="section-title t" style="margin-top:16px" data-en="UPCOMING (7 days)" data-pt="PRÓXIMOS (7 dias)">UPCOMING (7 days)</div>
+    <div class="section-title t" style="margin-top:16px" data-en="UPCOMING (14 days)" data-pt="PRÓXIMOS (14 dias)">UPCOMING (14 days)</div>
     <div class="card" id="dash-upcoming" style="padding:0 16px"></div>
   </div>
 
@@ -209,6 +209,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:1
       </select>
     </div>
     <div class="fg"><label class="t" data-en="Notes" data-pt="Notas">Notes</label><textarea id="eq-notes" placeholder="Year, model, plate..."></textarea></div>
+    <div class="fg"><label class="t" data-en="Current Hours (horímetro)" data-pt="Horímetro Atual">Current Hours (horímetro)</label><input id="eq-hours" type="number" min="0" placeholder="e.g. 1250 (optional)"/></div>
     <div class="modal-actions">
       <button class="btn" onclick="saveEquip()">✓ <span class="t" data-en="Save" data-pt="Salvar">Save</span></button>
       <button class="btn ghost" onclick="closeModal('modal-equip')"><span class="t" data-en="Cancel" data-pt="Cancelar">Cancel</span></button>
@@ -354,6 +355,15 @@ function getTaskDueDate(task){
 }
 
 function getTaskStatus(task){
+  if(task.intervalType==='hours'){
+    var eq = equipment.find(function(e){ return e.id===task.equipId; });
+    if(!eq || eq.currentHours===undefined || eq.currentHours===null || task.lastDoneHours===undefined || task.lastDoneHours===null) return 'na';
+    var hoursUsed = parseFloat(eq.currentHours) - parseFloat(task.lastDoneHours);
+    var remaining = task.intervalHours - hoursUsed;
+    if(remaining <= 0) return 'due';
+    if(remaining <= 50) return 'warn';
+    return 'ok';
+  }
   var due = getTaskDueDate(task);
   if(!due) return 'na';
   var days = daysDiff(due);
@@ -363,6 +373,17 @@ function getTaskStatus(task){
 }
 
 function statusBadge(task){
+  if(task.intervalType==='hours'){
+    var eq = equipment.find(function(e){ return e.id===task.equipId; });
+    if(!eq || eq.currentHours===undefined || eq.currentHours===null || task.lastDoneHours===undefined || task.lastDoneHours===null){
+      return '<span class="badge na">'+T('Set hrs','Config hrs')+'</span>';
+    }
+    var hoursUsed = parseFloat(eq.currentHours) - parseFloat(task.lastDoneHours);
+    var remaining = Math.round(task.intervalHours - hoursUsed);
+    if(remaining <= 0) return '<span class="badge due">'+T('Overdue','Vencido')+' '+Math.abs(remaining)+'h</span>';
+    if(remaining <= 50) return '<span class="badge warn">'+remaining+'h '+T('left','restante')+'</span>';
+    return '<span class="badge ok">'+remaining+'h '+T('left','restante')+'</span>';
+  }
   var due = getTaskDueDate(task);
   var status = getTaskStatus(task);
   if(status==='na') return '<span class="badge na">'+T('No date','Sem data')+'</span>';
@@ -541,11 +562,13 @@ function renderEquipment(){
         return '<div class="equip-card">'+
           '<div class="equip-header">'+
             '<div class="equip-icon '+cat.id+'">'+icons[cat.id]+'</div>'+
-            '<div style="flex:1"><div style="font-weight:800;font-size:15px">'+eq.name+'</div>'+
+            '<div style="flex:1;min-width:0"><div style="font-weight:800;font-size:15px">'+eq.name+'</div>'+
             (eq.notes?'<div style="font-size:12px;color:var(--muted)">'+eq.notes+'</div>':'')+
+            (eq.currentHours!==undefined&&eq.currentHours!==null?'<div style="font-size:11px;color:var(--blue);font-weight:700;margin-top:2px">'+T('Horímetro:','Horímetro:')+' '+eq.currentHours+'h</div>':'')+
             '</div>'+
-            '<button data-eid="'+eq.id+'" onclick="openAddTaskModal(this.dataset.eid)" class="btn sm" style="margin-right:6px">+ '+T('Task','Tarefa')+'</button>'+
-            '<button data-eid="'+eq.id+'" onclick="openEditEquipModal(this.dataset.eid)" style="background:transparent;border:1px solid var(--border2);border-radius:6px;padding:5px 10px;font-size:13px;cursor:pointer">✏️</button>'+
+            '<button data-eid="'+eq.id+'" onclick="openAddTaskModal(this.dataset.eid)" class="btn sm" style="margin-right:4px">+ '+T('Task','Tarefa')+'</button>'+
+            '<button data-eid="'+eq.id+'" onclick="openEditEquipModal(this.dataset.eid)" style="background:transparent;border:1px solid var(--border2);border-radius:6px;padding:5px 8px;font-size:13px;cursor:pointer;margin-right:4px">✏️</button>'+
+            '<button data-eid="'+eq.id+'" onclick="promptDeleteEquip(this.dataset.eid)" style="background:transparent;border:1px solid #fcc;border-radius:6px;padding:5px 8px;font-size:13px;cursor:pointer;color:var(--red)">🗑</button>'+
           '</div>'+
           (taskRows?'<div class="equip-tasks">'+taskRows+'</div>':'')+
         '</div>';
@@ -573,16 +596,16 @@ function renderCalendar(){
   var cells = '';
   for(var i=0;i<first;i++){
     var d2 = daysInPrev-first+1+i;
-    cells += '<div class="cal-day other-month">'+d2+'</div>';
+    cells += '<button class="cal-day other-month" disabled>'+d2+'</button>';
   }
   for(var d=1;d<=daysInMonth;d++){
     var dateStr = calYear+'-'+String(calMonth+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
     var isToday = dateStr===todayStr;
     var hasLog = logDates[dateStr];
-    cells += '<div class="cal-day'+(isToday?' today':'')+(hasLog?' has-event':'')+'" data-date="'+dateStr+'" onclick="calDayClick(this.dataset.date)">'+d+'</div>';
+    cells += '<button class="cal-day'+(isToday?' today':'')+(hasLog?' has-event':'')+'" data-date="'+dateStr+'" onclick="calDayClick(this.dataset.date)">'+d+'</button>';
   }
   var remaining = 42 - first - daysInMonth;
-  for(var n=1;n<=remaining;n++) cells += '<div class="cal-day other-month">'+n+'</div>';
+  for(var n=1;n<=remaining;n++) cells += '<button class="cal-day other-month" disabled>'+n+'</button>';
   grid.innerHTML = cells;
 }
 function calNav(dir){ calMonth+=dir; if(calMonth>11){calMonth=0;calYear++;} if(calMonth<0){calMonth=11;calYear--;} renderCalendar(); }
@@ -644,6 +667,7 @@ function openAddEquipModal(){
   document.getElementById('eq-name').value='';
   document.getElementById('eq-cat').value='truck';
   document.getElementById('eq-notes').value='';
+  document.getElementById('eq-hours').value='';
   document.getElementById('modal-equip').classList.add('open');
 }
 window.openAddEquipModal = openAddEquipModal;
@@ -655,6 +679,7 @@ function openEditEquipModal(id){
   document.getElementById('eq-name').value=eq.name||'';
   document.getElementById('eq-cat').value=eq.category||'truck';
   document.getElementById('eq-notes').value=eq.notes||'';
+  document.getElementById('eq-hours').value=(eq.currentHours!==undefined&&eq.currentHours!==null)?eq.currentHours:'';
   document.getElementById('modal-equip').classList.add('open');
 }
 window.openEditEquipModal = openEditEquipModal;
@@ -662,8 +687,10 @@ function saveEquip(){
   var name=document.getElementById('eq-name').value.trim();
   var cat=document.getElementById('eq-cat').value;
   var notes=document.getElementById('eq-notes').value.trim();
+  var hoursVal=document.getElementById('eq-hours').value;
   if(!name) return showToast(T('Enter a name','Insira um nome'),'err');
   var data={name:name,category:cat,notes:notes,updatedAt:new Date().toISOString(),updatedBy:currentUser?currentUser.name:'Admin'};
+  if(hoursVal!=='') data.currentHours=parseFloat(hoursVal);
   if(editingEquipId){ db.collection('gi_equipment').doc(editingEquipId).update(data); }
   else { db.collection('gi_equipment').add(Object.assign(data,{createdAt:new Date().toISOString(),createdBy:currentUser?currentUser.name:'Admin'})); }
   closeModal('modal-equip');
@@ -742,8 +769,13 @@ function saveLog(){
   if(!date) return showToast(T('Select a date','Selecione a data'),'err');
   var by = currentUser?currentUser.name:'Admin';
   db.collection('gi_logs').add({equipId:loggingEquipId,taskId:loggingTaskId,date:date,hours:hours||null,notes:notes,by:by,createdAt:new Date().toISOString()});
-  // Update lastDone on task
-  db.collection('gi_tasks').doc(loggingTaskId).update({lastDone:date,updatedAt:new Date().toISOString(),updatedBy:by});
+  // Update lastDone on task; also save lastDoneHours for hours-based tracking
+  var taskUpdate = {lastDone:date,updatedAt:new Date().toISOString(),updatedBy:by};
+  var loggedTask = tasks.find(function(t){ return t.id===loggingTaskId; });
+  if(loggedTask && loggedTask.intervalType==='hours' && hours){
+    taskUpdate.lastDoneHours = parseFloat(hours);
+  }
+  db.collection('gi_tasks').doc(loggingTaskId).update(taskUpdate);
   closeModal('modal-log');
   showToast(T('Logged! ✅','Registrado! ✅'));
 }
@@ -756,6 +788,12 @@ function promptDeleteTask(equipId,taskId){
   document.getElementById('modal-delete').classList.add('open');
 }
 window.promptDeleteTask = promptDeleteTask;
+function promptDeleteEquip(equipId){
+  pendingDeleteType='equipment'; pendingDeleteId=equipId;
+  document.getElementById('modal-delete-msg').textContent=T('Delete this equipment and ALL its tasks and logs? This cannot be undone.','Excluir este equipamento e TODAS as tarefas e registros? Isso não pode ser desfeito.');
+  document.getElementById('modal-delete').classList.add('open');
+}
+window.promptDeleteEquip = promptDeleteEquip;
 function promptDeleteLog(logId){
   pendingDeleteType='log'; pendingDeleteId=logId;
   document.getElementById('modal-delete-msg').textContent=T('Delete this log entry?','Excluir este registro?');
@@ -763,9 +801,17 @@ function promptDeleteLog(logId){
 }
 window.promptDeleteLog = promptDeleteLog;
 function confirmDelete(){
-  if(pendingDeleteType==='task'){
+  if(pendingDeleteType==='equipment'){
+    var eqTasks = tasks.filter(function(t){ return t.equipId===pendingDeleteId; });
+    eqTasks.forEach(function(t){
+      logs.filter(function(l){ return l.taskId===t.id; }).forEach(function(l){
+        db.collection('gi_logs').doc(l.id).delete();
+      });
+      db.collection('gi_tasks').doc(t.id).delete();
+    });
+    db.collection('gi_equipment').doc(pendingDeleteId).delete();
+  } else if(pendingDeleteType==='task'){
     db.collection('gi_tasks').doc(pendingDeleteId).delete();
-    // Also delete associated logs
     logs.filter(function(l){return l.taskId===pendingDeleteId;}).forEach(function(l){ db.collection('gi_logs').doc(l.id).delete(); });
   } else if(pendingDeleteType==='log'){
     db.collection('gi_logs').doc(pendingDeleteId).delete();
