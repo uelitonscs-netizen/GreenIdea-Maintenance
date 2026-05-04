@@ -52,6 +52,15 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:1
 .equip-icon.truck{background:#dbeafe;}
 .equip-icon.machine{background:#fef3c7;}
 .equip-icon.tool{background:#f3e8ff;}
+.equip-photo-thumb{width:42px;height:42px;border-radius:10px;object-fit:cover;flex-shrink:0;cursor:pointer;border:2px solid var(--border);}
+.photo-preview-wrap{position:relative;margin-bottom:8px;}
+.photo-preview-img{width:100%;max-height:180px;object-fit:cover;border-radius:10px;display:block;}
+.photo-remove-btn{position:absolute;top:6px;right:6px;background:rgba(0,0,0,.6);color:#fff;border:none;border-radius:50%;width:26px;height:26px;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.photo-input-label{display:flex;align-items:center;gap:8px;padding:10px 12px;border:1.5px dashed var(--border2);border-radius:8px;cursor:pointer;font-size:13px;color:var(--muted);font-weight:600;}
+.photo-input-label:active{background:#f9fafb;}
+#modal-photo .modal{background:#111;padding:0;border-radius:18px;overflow:hidden;}
+#modal-photo img{width:100%;display:block;border-radius:18px;}
+#modal-photo .modal-actions{background:#111;padding:12px 16px;}
 .equip-tasks{padding:0 16px 12px;}
 .task-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-top:1px solid var(--border);}
 .task-info{flex:1;min-width:0;}
@@ -210,6 +219,17 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:1
     </div>
     <div class="fg"><label class="t" data-en="Notes" data-pt="Notas">Notes</label><textarea id="eq-notes" placeholder="Year, model, plate..."></textarea></div>
     <div class="fg"><label class="t" data-en="Current Hours (horímetro)" data-pt="Horímetro Atual">Current Hours (horímetro)</label><input id="eq-hours" type="number" min="0" placeholder="e.g. 1250 (optional)"/></div>
+    <div class="fg">
+      <label class="t" data-en="Photo" data-pt="Foto">Photo</label>
+      <div id="eq-photo-preview" style="display:none" class="photo-preview-wrap">
+        <img id="eq-photo-img" src="" class="photo-preview-img"/>
+        <button class="photo-remove-btn" onclick="removeEquipPhoto()">✕</button>
+      </div>
+      <label id="eq-photo-label" class="photo-input-label">
+        📷 <span class="t" data-en="Tap to add photo" data-pt="Toque para adicionar foto">Tap to add photo</span>
+        <input id="eq-photo-input" type="file" accept="image/*" capture="environment" style="display:none" onchange="handleEquipPhoto(this)"/>
+      </label>
+    </div>
     <div class="modal-actions">
       <button class="btn" onclick="saveEquip()">✓ <span class="t" data-en="Save" data-pt="Salvar">Save</span></button>
       <button class="btn ghost" onclick="closeModal('modal-equip')"><span class="t" data-en="Cancel" data-pt="Cancelar">Cancel</span></button>
@@ -262,6 +282,16 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:1
     <div class="modal-actions">
       <button class="btn red" onclick="confirmDelete()"><span class="t" data-en="Delete" data-pt="Excluir">Delete</span></button>
       <button class="btn ghost" onclick="closeModal('modal-delete')"><span class="t" data-en="Cancel" data-pt="Cancelar">Cancel</span></button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: PHOTO VIEWER -->
+<div id="modal-photo" class="modal-overlay">
+  <div class="modal" style="padding:0;background:#111;overflow:hidden;">
+    <img id="modal-photo-full" src="" style="width:100%;display:block;border-radius:18px 18px 0 0;"/>
+    <div class="modal-actions" style="background:#111;padding:12px 16px;">
+      <button class="btn full ghost" style="color:#fff;border-color:#444;" onclick="closeModal('modal-photo')"><span class="t" data-en="Close" data-pt="Fechar">Close</span></button>
     </div>
   </div>
 </div>
@@ -561,7 +591,9 @@ function renderEquipment(){
         }).join('');
         return '<div class="equip-card">'+
           '<div class="equip-header">'+
-            '<div class="equip-icon '+cat.id+'">'+icons[cat.id]+'</div>'+
+            (eq.photo
+              ? '<img src="'+eq.photo+'" class="equip-photo-thumb" data-eid="'+eq.id+'" onclick="viewEquipPhoto(this.dataset.eid)" alt=""/>'
+              : '<div class="equip-icon '+cat.id+'">'+icons[cat.id]+'</div>')+
             '<div style="flex:1;min-width:0"><div style="font-weight:800;font-size:15px">'+eq.name+'</div>'+
             (eq.notes?'<div style="font-size:12px;color:var(--muted)">'+eq.notes+'</div>':'')+
             (eq.currentHours!==undefined&&eq.currentHours!==null?'<div style="font-size:11px;color:var(--blue);font-weight:700;margin-top:2px">'+T('Horímetro:','Horímetro:')+' '+eq.currentHours+'h</div>':'')+
@@ -661,13 +693,19 @@ function renderHistory(){
 window.renderHistory = renderHistory;
 
 // ── EQUIPMENT MODALS ──
+var pendingEquipPhoto = null; // base64 string or null
+
 function openAddEquipModal(){
   editingEquipId=null;
+  pendingEquipPhoto=null;
   document.getElementById('modal-equip-title').textContent = T('Add Equipment','Adicionar Equipamento');
   document.getElementById('eq-name').value='';
   document.getElementById('eq-cat').value='truck';
   document.getElementById('eq-notes').value='';
   document.getElementById('eq-hours').value='';
+  document.getElementById('eq-photo-input').value='';
+  document.getElementById('eq-photo-preview').style.display='none';
+  document.getElementById('eq-photo-label').style.display='flex';
   document.getElementById('modal-equip').classList.add('open');
 }
 window.openAddEquipModal = openAddEquipModal;
@@ -675,14 +713,66 @@ function openEditEquipModal(id){
   var eq = equipment.find(function(e){ return e.id===id; });
   if(!eq) return;
   editingEquipId=id;
+  pendingEquipPhoto = eq.photo || null;
   document.getElementById('modal-equip-title').textContent = T('Edit Equipment','Editar Equipamento');
   document.getElementById('eq-name').value=eq.name||'';
   document.getElementById('eq-cat').value=eq.category||'truck';
   document.getElementById('eq-notes').value=eq.notes||'';
   document.getElementById('eq-hours').value=(eq.currentHours!==undefined&&eq.currentHours!==null)?eq.currentHours:'';
+  document.getElementById('eq-photo-input').value='';
+  if(eq.photo){
+    document.getElementById('eq-photo-img').src=eq.photo;
+    document.getElementById('eq-photo-preview').style.display='block';
+    document.getElementById('eq-photo-label').style.display='none';
+  } else {
+    document.getElementById('eq-photo-preview').style.display='none';
+    document.getElementById('eq-photo-label').style.display='flex';
+  }
   document.getElementById('modal-equip').classList.add('open');
 }
 window.openEditEquipModal = openEditEquipModal;
+
+function handleEquipPhoto(input){
+  if(!input.files||!input.files[0]) return;
+  var file = input.files[0];
+  var reader = new FileReader();
+  reader.onload = function(e){
+    var img = new Image();
+    img.onload = function(){
+      var canvas = document.createElement('canvas');
+      var MAX = 800;
+      var w = img.width, h = img.height;
+      if(w>h){ if(w>MAX){h=Math.round(h*MAX/w);w=MAX;} } else { if(h>MAX){w=Math.round(w*MAX/h);h=MAX;} }
+      canvas.width=w; canvas.height=h;
+      canvas.getContext('2d').drawImage(img,0,0,w,h);
+      var b64 = canvas.toDataURL('image/jpeg',0.72);
+      pendingEquipPhoto = b64;
+      document.getElementById('eq-photo-img').src=b64;
+      document.getElementById('eq-photo-preview').style.display='block';
+      document.getElementById('eq-photo-label').style.display='none';
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+window.handleEquipPhoto = handleEquipPhoto;
+
+function removeEquipPhoto(){
+  pendingEquipPhoto=null;
+  document.getElementById('eq-photo-input').value='';
+  document.getElementById('eq-photo-preview').style.display='none';
+  document.getElementById('eq-photo-label').style.display='flex';
+}
+window.removeEquipPhoto = removeEquipPhoto;
+
+function viewEquipPhoto(id){
+  var eq = equipment.find(function(e){ return e.id===id; });
+  if(!eq||!eq.photo) return;
+  document.getElementById('modal-photo-full').src=eq.photo;
+  document.getElementById('modal-photo').classList.add('open');
+}
+window.viewEquipPhoto = viewEquipPhoto;
+
 function saveEquip(){
   var name=document.getElementById('eq-name').value.trim();
   var cat=document.getElementById('eq-cat').value;
@@ -691,6 +781,8 @@ function saveEquip(){
   if(!name) return showToast(T('Enter a name','Insira um nome'),'err');
   var data={name:name,category:cat,notes:notes,updatedAt:new Date().toISOString(),updatedBy:currentUser?currentUser.name:'Admin'};
   if(hoursVal!=='') data.currentHours=parseFloat(hoursVal);
+  if(pendingEquipPhoto!==null) data.photo=pendingEquipPhoto;
+  else if(editingEquipId){ data.photo=null; } // cleared
   if(editingEquipId){ db.collection('gi_equipment').doc(editingEquipId).update(data); }
   else { db.collection('gi_equipment').add(Object.assign(data,{createdAt:new Date().toISOString(),createdBy:currentUser?currentUser.name:'Admin'})); }
   closeModal('modal-equip');
@@ -854,6 +946,16 @@ auth.onAuthStateChanged(function(user){
     setTimeout(function(){ requestNotifPermission(); checkNotifications(); }, 2000);
   } else {
     showScreen('login');
+  }
+});
+
+// Wire photo label click for Android (label[for] may not fire on Samsung)
+document.addEventListener('DOMContentLoaded', function(){
+  var lbl = document.getElementById('eq-photo-label');
+  if(lbl){
+    lbl.addEventListener('click', function(){
+      document.getElementById('eq-photo-input').click();
+    });
   }
 });
 </script>
