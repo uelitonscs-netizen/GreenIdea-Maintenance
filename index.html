@@ -52,15 +52,6 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:1
 .equip-icon.truck{background:#dbeafe;}
 .equip-icon.machine{background:#fef3c7;}
 .equip-icon.tool{background:#f3e8ff;}
-.equip-photo-thumb{width:42px;height:42px;border-radius:10px;object-fit:cover;flex-shrink:0;cursor:pointer;border:2px solid var(--border);}
-.photo-preview-wrap{position:relative;margin-bottom:8px;}
-.photo-preview-img{width:100%;max-height:180px;object-fit:cover;border-radius:10px;display:block;}
-.photo-remove-btn{position:absolute;top:6px;right:6px;background:rgba(0,0,0,.6);color:#fff;border:none;border-radius:50%;width:26px;height:26px;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
-.photo-input-label{display:flex;align-items:center;gap:8px;padding:10px 12px;border:1.5px dashed var(--border2);border-radius:8px;cursor:pointer;font-size:13px;color:var(--muted);font-weight:600;}
-.photo-input-label:active{background:#f9fafb;}
-#modal-photo .modal{background:#111;padding:0;border-radius:18px;overflow:hidden;}
-#modal-photo img{width:100%;display:block;border-radius:18px;}
-#modal-photo .modal-actions{background:#111;padding:12px 16px;}
 .equip-tasks{padding:0 16px 12px;}
 .task-row{display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-top:1px solid var(--border);}
 .task-info{flex:1;min-width:0;}
@@ -95,7 +86,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:1
 /* CALENDAR */
 .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:12px;}
 .cal-day-header{text-align:center;font-size:10px;font-weight:700;color:var(--muted);padding:4px 0;}
-.cal-day{aspect-ratio:1;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;cursor:pointer;position:relative;border:none;background:none;font-family:var(--font);color:var(--text);-webkit-appearance:none;appearance:none;padding:0;width:100%;}
+.cal-day{aspect-ratio:1;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;cursor:pointer;position:relative;}
 .cal-day.today{background:var(--green);color:#fff;}
 .cal-day.has-event::after{content:'';position:absolute;bottom:3px;left:50%;transform:translateX(-50%);width:4px;height:4px;border-radius:50%;background:var(--amber);}
 .cal-day.today.has-event::after{background:#fff;}
@@ -104,6 +95,18 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:1
 
 /* TOAST */
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#111;color:#fff;padding:10px 20px;border-radius:99px;font-size:13px;font-weight:600;z-index:9999;display:none;white-space:nowrap;}
+
+/* COST FEATURE */
+.cost-toggle{display:flex;gap:6px;margin-bottom:10px;}
+.cost-toggle button{flex:1;padding:7px;border:1px solid var(--border2);border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;font-family:var(--font);background:#fff;color:var(--muted);}
+.cost-toggle button.active{background:var(--green);color:#fff;border-color:var(--green);}
+.cost-item-row{display:flex;gap:6px;align-items:center;margin-bottom:6px;}
+.cost-item-row input{flex:1;padding:8px 10px;border:1px solid var(--border2);border-radius:8px;font-size:13px;font-family:var(--font);}
+.cost-item-row input.cost-amt{width:90px;flex:none;}
+.cost-remove-btn{background:transparent;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:0 4px;line-height:1;}
+.cost-total{font-size:13px;font-weight:800;color:var(--green);text-align:right;padding:8px 0 4px;border-top:1px solid var(--border);}
+.cost-badge{background:#f0fdf4;color:#16a34a;border:1px solid #bbf7d0;border-radius:99px;font-size:11px;font-weight:700;padding:2px 8px;display:inline-block;}
+.cost-badge.zero{display:none;}
 
 /* KPI GRID */
 .kpi-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px;}
@@ -164,6 +167,7 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:1
   <!-- DASHBOARD -->
   <div id="tab-dashboard" class="body">
     <div class="kpi-grid" id="dash-kpis"></div>
+    <div class="kpi-grid" id="dash-cost-kpis" style="margin-top:-4px"></div>
     <div class="section-title t" data-en="ALERTS" data-pt="ALERTAS">ALERTS</div>
     <div class="card" id="dash-alerts" style="padding:0 16px"></div>
     <div class="section-title t" style="margin-top:16px" data-en="UPCOMING (14 days)" data-pt="PRÓXIMOS (14 dias)">UPCOMING (14 days)</div>
@@ -218,18 +222,6 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:1
       </select>
     </div>
     <div class="fg"><label class="t" data-en="Notes" data-pt="Notas">Notes</label><textarea id="eq-notes" placeholder="Year, model, plate..."></textarea></div>
-    <div class="fg"><label class="t" data-en="Current Hours (horímetro)" data-pt="Horímetro Atual">Current Hours (horímetro)</label><input id="eq-hours" type="number" min="0" placeholder="e.g. 1250 (optional)"/></div>
-    <div class="fg">
-      <label class="t" data-en="Photo" data-pt="Foto">Photo</label>
-      <div id="eq-photo-preview" style="display:none" class="photo-preview-wrap">
-        <img id="eq-photo-img" src="" class="photo-preview-img"/>
-        <button class="photo-remove-btn" onclick="removeEquipPhoto()">✕</button>
-      </div>
-      <label id="eq-photo-label" class="photo-input-label">
-        📷 <span class="t" data-en="Tap to add photo" data-pt="Toque para adicionar foto">Tap to add photo</span>
-        <input id="eq-photo-input" type="file" accept="image/*" capture="environment" style="display:none" onchange="handleEquipPhoto(this)"/>
-      </label>
-    </div>
     <div class="modal-actions">
       <button class="btn" onclick="saveEquip()">✓ <span class="t" data-en="Save" data-pt="Salvar">Save</span></button>
       <button class="btn ghost" onclick="closeModal('modal-equip')"><span class="t" data-en="Cancel" data-pt="Cancelar">Cancel</span></button>
@@ -266,6 +258,26 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:1
     <div class="modal-title t" data-en="Log Maintenance" data-pt="Registrar Manutenção">Log Maintenance</div>
     <div class="fg"><label class="t" data-en="Date" data-pt="Data">Date</label><input id="log-date" type="date"/></div>
     <div class="fg"><label class="t" data-en="Hours at service (optional)" data-pt="Horímetro (opcional)">Hours at service</label><input id="log-hours" type="number" placeholder="e.g. 1250"/></div>
+
+    <!-- COST SECTION -->
+    <div class="fg">
+      <label class="t" data-en="Cost (optional)" data-pt="Custo (opcional)">Cost (optional)</label>
+      <div class="cost-toggle">
+        <button id="cost-simple-btn" onclick="setCostMode('simple')" class="active">💵 <span class="t" data-en="Simple" data-pt="Simples">Simple</span></button>
+        <button id="cost-detail-btn" onclick="setCostMode('detail')">📋 <span class="t" data-en="Itemized" data-pt="Detalhado">Itemized</span></button>
+      </div>
+      <!-- Simple mode -->
+      <div id="cost-simple-wrap">
+        <input id="cost-simple-val" type="number" min="0" step="0.01" placeholder="$ 0.00  (total da nota)"/>
+      </div>
+      <!-- Itemized mode -->
+      <div id="cost-detail-wrap" style="display:none">
+        <div id="cost-items-list"></div>
+        <button onclick="addCostItem()" style="width:100%;padding:8px;border:1px dashed var(--border2);border-radius:8px;background:transparent;font-size:12px;font-weight:700;color:var(--muted);cursor:pointer;font-family:var(--font);">+ <span class="t" data-en="Add item" data-pt="Adicionar item">Add item</span></button>
+        <div class="cost-total" id="cost-detail-total">Total: $0.00</div>
+      </div>
+    </div>
+
     <div class="fg"><label class="t" data-en="Notes" data-pt="Notas">Notes</label><textarea id="log-notes" placeholder="What was done..."></textarea></div>
     <div class="modal-actions">
       <button class="btn amber" onclick="saveLog()">✓ <span class="t" data-en="Mark Done" data-pt="Marcar Feito">Mark Done</span></button>
@@ -282,16 +294,6 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:1
     <div class="modal-actions">
       <button class="btn red" onclick="confirmDelete()"><span class="t" data-en="Delete" data-pt="Excluir">Delete</span></button>
       <button class="btn ghost" onclick="closeModal('modal-delete')"><span class="t" data-en="Cancel" data-pt="Cancelar">Cancel</span></button>
-    </div>
-  </div>
-</div>
-
-<!-- MODAL: PHOTO VIEWER -->
-<div id="modal-photo" class="modal-overlay">
-  <div class="modal" style="padding:0;background:#111;overflow:hidden;">
-    <img id="modal-photo-full" src="" style="width:100%;display:block;border-radius:18px 18px 0 0;"/>
-    <div class="modal-actions" style="background:#111;padding:12px 16px;">
-      <button class="btn full ghost" style="color:#fff;border-color:#444;" onclick="closeModal('modal-photo')"><span class="t" data-en="Close" data-pt="Fechar">Close</span></button>
     </div>
   </div>
 </div>
@@ -385,15 +387,6 @@ function getTaskDueDate(task){
 }
 
 function getTaskStatus(task){
-  if(task.intervalType==='hours'){
-    var eq = equipment.find(function(e){ return e.id===task.equipId; });
-    if(!eq || eq.currentHours===undefined || eq.currentHours===null || task.lastDoneHours===undefined || task.lastDoneHours===null) return 'na';
-    var hoursUsed = parseFloat(eq.currentHours) - parseFloat(task.lastDoneHours);
-    var remaining = task.intervalHours - hoursUsed;
-    if(remaining <= 0) return 'due';
-    if(remaining <= 50) return 'warn';
-    return 'ok';
-  }
   var due = getTaskDueDate(task);
   if(!due) return 'na';
   var days = daysDiff(due);
@@ -403,17 +396,6 @@ function getTaskStatus(task){
 }
 
 function statusBadge(task){
-  if(task.intervalType==='hours'){
-    var eq = equipment.find(function(e){ return e.id===task.equipId; });
-    if(!eq || eq.currentHours===undefined || eq.currentHours===null || task.lastDoneHours===undefined || task.lastDoneHours===null){
-      return '<span class="badge na">'+T('Set hrs','Config hrs')+'</span>';
-    }
-    var hoursUsed = parseFloat(eq.currentHours) - parseFloat(task.lastDoneHours);
-    var remaining = Math.round(task.intervalHours - hoursUsed);
-    if(remaining <= 0) return '<span class="badge due">'+T('Overdue','Vencido')+' '+Math.abs(remaining)+'h</span>';
-    if(remaining <= 50) return '<span class="badge warn">'+remaining+'h '+T('left','restante')+'</span>';
-    return '<span class="badge ok">'+remaining+'h '+T('left','restante')+'</span>';
-  }
   var due = getTaskDueDate(task);
   var status = getTaskStatus(task);
   if(status==='na') return '<span class="badge na">'+T('No date','Sem data')+'</span>';
@@ -507,12 +489,24 @@ function switchTab(tab, btn){
 }
 window.switchTab = switchTab;
 
+// ── COST HELPERS ──
+function getTotalCost(log){
+  if(log.costMode==='detail' && log.costItems && log.costItems.length){
+    return log.costItems.reduce(function(s,it){ return s+(parseFloat(it.amount)||0); },0);
+  }
+  if(log.costSimple) return parseFloat(log.costSimple)||0;
+  return 0;
+}
+function fmtCurrency(v){
+  if(!v) return '$0';
+  return '$'+parseFloat(v).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',');
+}
+
 // ── DASHBOARD ──
 function renderDashboard(){
   var allTasks = tasks;
   var overdue = allTasks.filter(function(t){ return getTaskStatus(t)==='due'; });
   var warn = allTasks.filter(function(t){ return getTaskStatus(t)==='warn'; });
-  var ok = allTasks.filter(function(t){ return getTaskStatus(t)==='ok'; });
   var kpis = document.getElementById('dash-kpis');
   kpis.innerHTML = [
     {val:equipment.length, label:T('Equipment','Equipamentos'), color:'var(--text)'},
@@ -522,6 +516,22 @@ function renderDashboard(){
   ].map(function(k){
     return '<div class="kpi-card"><div class="kpi-val" style="color:'+k.color+'">'+k.val+'</div><div class="kpi-label">'+k.label+'</div></div>';
   }).join('');
+
+  // Cost KPIs
+  var now = new Date();
+  var thisMonth = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
+  var totalMonth = 0, totalAll = 0;
+  logs.forEach(function(l){
+    var c = getTotalCost(l);
+    totalAll += c;
+    if(l.date && l.date.startsWith(thisMonth)) totalMonth += c;
+  });
+  var costEl = document.getElementById('dash-cost-kpis');
+  if(costEl){
+    costEl.innerHTML =
+      '<div class="kpi-card"><div class="kpi-val" style="color:var(--green);font-size:20px">'+fmtCurrency(totalMonth)+'</div><div class="kpi-label">'+T('SPENT THIS MONTH','GASTO ESTE MÊS')+'</div></div>'+
+      '<div class="kpi-card"><div class="kpi-val" style="color:var(--green);font-size:20px">'+fmtCurrency(totalAll)+'</div><div class="kpi-label">'+T('TOTAL SPENT','TOTAL GASTO')+'</div></div>';
+  }
 
   // Alerts
   var alertEl = document.getElementById('dash-alerts');
@@ -591,16 +601,12 @@ function renderEquipment(){
         }).join('');
         return '<div class="equip-card">'+
           '<div class="equip-header">'+
-            (eq.photo
-              ? '<img src="'+eq.photo+'" class="equip-photo-thumb" data-eid="'+eq.id+'" onclick="viewEquipPhoto(this.dataset.eid)" alt=""/>'
-              : '<div class="equip-icon '+cat.id+'">'+icons[cat.id]+'</div>')+
-            '<div style="flex:1;min-width:0"><div style="font-weight:800;font-size:15px">'+eq.name+'</div>'+
+            '<div class="equip-icon '+cat.id+'">'+icons[cat.id]+'</div>'+
+            '<div style="flex:1"><div style="font-weight:800;font-size:15px">'+eq.name+'</div>'+
             (eq.notes?'<div style="font-size:12px;color:var(--muted)">'+eq.notes+'</div>':'')+
-            (eq.currentHours!==undefined&&eq.currentHours!==null?'<div style="font-size:11px;color:var(--blue);font-weight:700;margin-top:2px">'+T('Horímetro:','Horímetro:')+' '+eq.currentHours+'h</div>':'')+
             '</div>'+
-            '<button data-eid="'+eq.id+'" onclick="openAddTaskModal(this.dataset.eid)" class="btn sm" style="margin-right:4px">+ '+T('Task','Tarefa')+'</button>'+
-            '<button data-eid="'+eq.id+'" onclick="openEditEquipModal(this.dataset.eid)" style="background:transparent;border:1px solid var(--border2);border-radius:6px;padding:5px 8px;font-size:13px;cursor:pointer;margin-right:4px">✏️</button>'+
-            '<button data-eid="'+eq.id+'" onclick="promptDeleteEquip(this.dataset.eid)" style="background:transparent;border:1px solid #fcc;border-radius:6px;padding:5px 8px;font-size:13px;cursor:pointer;color:var(--red)">🗑</button>'+
+            '<button data-eid="'+eq.id+'" onclick="openAddTaskModal(this.dataset.eid)" class="btn sm" style="margin-right:6px">+ '+T('Task','Tarefa')+'</button>'+
+            '<button data-eid="'+eq.id+'" onclick="openEditEquipModal(this.dataset.eid)" style="background:transparent;border:1px solid var(--border2);border-radius:6px;padding:5px 10px;font-size:13px;cursor:pointer">✏️</button>'+
           '</div>'+
           (taskRows?'<div class="equip-tasks">'+taskRows+'</div>':'')+
         '</div>';
@@ -628,16 +634,16 @@ function renderCalendar(){
   var cells = '';
   for(var i=0;i<first;i++){
     var d2 = daysInPrev-first+1+i;
-    cells += '<button class="cal-day other-month" disabled>'+d2+'</button>';
+    cells += '<div class="cal-day other-month">'+d2+'</div>';
   }
   for(var d=1;d<=daysInMonth;d++){
     var dateStr = calYear+'-'+String(calMonth+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
     var isToday = dateStr===todayStr;
     var hasLog = logDates[dateStr];
-    cells += '<button class="cal-day'+(isToday?' today':'')+(hasLog?' has-event':'')+'" data-date="'+dateStr+'" onclick="calDayClick(this.dataset.date)">'+d+'</button>';
+    cells += '<div class="cal-day'+(isToday?' today':'')+(hasLog?' has-event':'')+'" data-date="'+dateStr+'" onclick="calDayClick(this.dataset.date)">'+d+'</div>';
   }
   var remaining = 42 - first - daysInMonth;
-  for(var n=1;n<=remaining;n++) cells += '<button class="cal-day other-month" disabled>'+n+'</button>';
+  for(var n=1;n<=remaining;n++) cells += '<div class="cal-day other-month">'+n+'</div>';
   grid.innerHTML = cells;
 }
 function calNav(dir){ calMonth+=dir; if(calMonth>11){calMonth=0;calYear++;} if(calMonth<0){calMonth=11;calYear--;} renderCalendar(); }
@@ -671,41 +677,46 @@ function renderHistory(){
   var filtered = filter ? logs.filter(function(l){ return l.equipId===filter; }) : logs;
   var el = document.getElementById('history-list');
   if(!filtered.length){ el.innerHTML='<div style="text-align:center;color:var(--muted);padding:40px">'+T('No records yet.','Sem registros.')+'</div>'; return; }
+  var grandTotal = filtered.reduce(function(s,l){ return s+getTotalCost(l); }, 0);
   el.innerHTML = filtered.map(function(l){
     var t = tasks.find(function(tk){ return tk.id===l.taskId; });
     var eq = equipment.find(function(e){ return e.id===l.equipId; });
+    var cost = getTotalCost(l);
+    var costDetail = '';
+    if(l.costMode==='detail' && l.costItems && l.costItems.length){
+      costDetail = '<div style="margin-top:6px;padding-top:6px;border-top:1px solid var(--border)">'+
+        l.costItems.map(function(it){
+          return '<div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted)">'+
+            '<span>'+it.desc+'</span><span>'+fmtCurrency(it.amount)+'</span></div>';
+        }).join('')+'</div>';
+    }
     return '<div class="card" style="margin-bottom:10px">'+
       '<div style="display:flex;justify-content:space-between;align-items:flex-start">'+
-        '<div>'+
+        '<div style="flex:1;min-width:0">'+
           '<div style="font-weight:800;font-size:14px">'+(t?t.name:T('Maintenance','Manutenção'))+'</div>'+
           '<div style="font-size:12px;color:var(--muted);margin-top:2px">'+(eq?eq.name:'')+(l.hours?' · '+l.hours+T(' hrs',' hrs'):'')+'</div>'+
           (l.notes?'<div style="font-size:12px;color:var(--muted);margin-top:2px">'+l.notes+'</div>':'')+
           '<div style="font-size:11px;color:var(--muted);margin-top:4px">'+T('By','Por')+': '+(l.by||'—')+'</div>'+
+          (cost?costDetail:'')+''+
         '</div>'+
         '<div style="text-align:right;flex-shrink:0;margin-left:12px">'+
           '<div style="font-weight:700;font-size:13px">'+fmtDate(l.date)+'</div>'+
-          '<button data-lid="'+l.id+'" onclick="promptDeleteLog(this.dataset.lid)" style="background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:18px;margin-top:4px">✕</button>'+
+          (cost?'<div class="cost-badge" style="margin-top:4px">'+fmtCurrency(cost)+'</div>':'')+
+          '<br><button data-lid="'+l.id+'" onclick="promptDeleteLog(this.dataset.lid)" style="background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:18px;margin-top:4px">✕</button>'+
         '</div>'+
       '</div>'+
     '</div>';
-  }).join('');
+  }).join('') + (grandTotal?'<div style="text-align:right;font-weight:800;font-size:14px;padding:8px 4px;color:var(--green)">Total: '+fmtCurrency(grandTotal)+'</div>':'');
 }
 window.renderHistory = renderHistory;
 
 // ── EQUIPMENT MODALS ──
-var pendingEquipPhoto = null; // base64 string or null
-
 function openAddEquipModal(){
   editingEquipId=null;
-  pendingEquipPhoto=null;
   document.getElementById('modal-equip-title').textContent = T('Add Equipment','Adicionar Equipamento');
   document.getElementById('eq-name').value='';
   document.getElementById('eq-cat').value='truck';
   document.getElementById('eq-notes').value='';
-  document.getElementById('eq-hours').value='';
-  document.getElementById('eq-photo-input').value='';
-  document.getElementById('eq-photo-preview').style.display='none';
-  document.getElementById('eq-photo-label').style.display='flex';
   document.getElementById('modal-equip').classList.add('open');
 }
 window.openAddEquipModal = openAddEquipModal;
@@ -713,76 +724,19 @@ function openEditEquipModal(id){
   var eq = equipment.find(function(e){ return e.id===id; });
   if(!eq) return;
   editingEquipId=id;
-  pendingEquipPhoto = eq.photo || null;
   document.getElementById('modal-equip-title').textContent = T('Edit Equipment','Editar Equipamento');
   document.getElementById('eq-name').value=eq.name||'';
   document.getElementById('eq-cat').value=eq.category||'truck';
   document.getElementById('eq-notes').value=eq.notes||'';
-  document.getElementById('eq-hours').value=(eq.currentHours!==undefined&&eq.currentHours!==null)?eq.currentHours:'';
-  document.getElementById('eq-photo-input').value='';
-  if(eq.photo){
-    document.getElementById('eq-photo-img').src=eq.photo;
-    document.getElementById('eq-photo-preview').style.display='block';
-    document.getElementById('eq-photo-label').style.display='none';
-  } else {
-    document.getElementById('eq-photo-preview').style.display='none';
-    document.getElementById('eq-photo-label').style.display='flex';
-  }
   document.getElementById('modal-equip').classList.add('open');
 }
 window.openEditEquipModal = openEditEquipModal;
-
-function handleEquipPhoto(input){
-  if(!input.files||!input.files[0]) return;
-  var file = input.files[0];
-  var reader = new FileReader();
-  reader.onload = function(e){
-    var img = new Image();
-    img.onload = function(){
-      var canvas = document.createElement('canvas');
-      var MAX = 800;
-      var w = img.width, h = img.height;
-      if(w>h){ if(w>MAX){h=Math.round(h*MAX/w);w=MAX;} } else { if(h>MAX){w=Math.round(w*MAX/h);h=MAX;} }
-      canvas.width=w; canvas.height=h;
-      canvas.getContext('2d').drawImage(img,0,0,w,h);
-      var b64 = canvas.toDataURL('image/jpeg',0.72);
-      pendingEquipPhoto = b64;
-      document.getElementById('eq-photo-img').src=b64;
-      document.getElementById('eq-photo-preview').style.display='block';
-      document.getElementById('eq-photo-label').style.display='none';
-    };
-    img.src = e.target.result;
-  };
-  reader.readAsDataURL(file);
-}
-window.handleEquipPhoto = handleEquipPhoto;
-
-function removeEquipPhoto(){
-  pendingEquipPhoto=null;
-  document.getElementById('eq-photo-input').value='';
-  document.getElementById('eq-photo-preview').style.display='none';
-  document.getElementById('eq-photo-label').style.display='flex';
-}
-window.removeEquipPhoto = removeEquipPhoto;
-
-function viewEquipPhoto(id){
-  var eq = equipment.find(function(e){ return e.id===id; });
-  if(!eq||!eq.photo) return;
-  document.getElementById('modal-photo-full').src=eq.photo;
-  document.getElementById('modal-photo').classList.add('open');
-}
-window.viewEquipPhoto = viewEquipPhoto;
-
 function saveEquip(){
   var name=document.getElementById('eq-name').value.trim();
   var cat=document.getElementById('eq-cat').value;
   var notes=document.getElementById('eq-notes').value.trim();
-  var hoursVal=document.getElementById('eq-hours').value;
   if(!name) return showToast(T('Enter a name','Insira um nome'),'err');
   var data={name:name,category:cat,notes:notes,updatedAt:new Date().toISOString(),updatedBy:currentUser?currentUser.name:'Admin'};
-  if(hoursVal!=='') data.currentHours=parseFloat(hoursVal);
-  if(pendingEquipPhoto!==null) data.photo=pendingEquipPhoto;
-  else if(editingEquipId){ data.photo=null; } // cleared
   if(editingEquipId){ db.collection('gi_equipment').doc(editingEquipId).update(data); }
   else { db.collection('gi_equipment').add(Object.assign(data,{createdAt:new Date().toISOString(),createdBy:currentUser?currentUser.name:'Admin'})); }
   closeModal('modal-equip');
@@ -846,28 +800,79 @@ function saveTask(){
 window.saveTask = saveTask;
 
 // ── LOG MAINTENANCE ──
-function openLogModal(equipId,taskId){
+var costMode = 'simple';
+var costItems = [];
+
+function setCostMode(mode){
+  costMode = mode;
+  document.getElementById('cost-simple-btn').classList.toggle('active', mode==='simple');
+  document.getElementById('cost-detail-btn').classList.toggle('active', mode==='detail');
+  document.getElementById('cost-simple-wrap').style.display = mode==='simple'?'block':'none';
+  document.getElementById('cost-detail-wrap').style.display = mode==='detail'?'block':'none';
+}
+window.setCostMode = setCostMode;
+
+function addCostItem(desc, amt){
+  var item = {desc: desc||'', amount: amt||''};
+  costItems.push(item);
+  renderCostItems();
+}
+window.addCostItem = addCostItem;
+
+function removeCostItem(idx){
+  costItems.splice(idx, 1);
+  renderCostItems();
+}
+window.removeCostItem = removeCostItem;
+
+function renderCostItems(){
+  var html = costItems.map(function(it, i){
+    return '<div class="cost-item-row">'+
+      '<input type="text" placeholder="'+T('Description (e.g. Brake Pads)','Descrição (ex: Pastilha)') +'" value="'+it.desc+'" oninput="costItems['+i+'].desc=this.value"/>'+
+      '<input type="number" class="cost-amt" placeholder="0.00" min="0" step="0.01" value="'+it.amount+'" oninput="costItems['+i+'].amount=this.value;updateCostTotal()"/>'+
+      '<button class="cost-remove-btn" onclick="removeCostItem('+i+')">✕</button>'+
+    '</div>';
+  }).join('');
+  document.getElementById('cost-items-list').innerHTML = html;
+  updateCostTotal();
+}
+
+function updateCostTotal(){
+  var total = costItems.reduce(function(s,it){ return s+(parseFloat(it.amount)||0); }, 0);
+  var el = document.getElementById('cost-detail-total');
+  if(el) el.textContent = 'Total: '+fmtCurrency(total);
+}
+window.updateCostTotal = updateCostTotal;
+
+function openLogModal(equipId, taskId){
   loggingEquipId=equipId; loggingTaskId=taskId;
   document.getElementById('log-date').value=localDateStr();
   document.getElementById('log-hours').value='';
   document.getElementById('log-notes').value='';
+  document.getElementById('cost-simple-val').value='';
+  costItems = [];
+  renderCostItems();
+  setCostMode('simple');
   document.getElementById('modal-log').classList.add('open');
 }
 window.openLogModal = openLogModal;
+
 function saveLog(){
   var date=document.getElementById('log-date').value;
   var hours=document.getElementById('log-hours').value;
   var notes=document.getElementById('log-notes').value.trim();
   if(!date) return showToast(T('Select a date','Selecione a data'),'err');
   var by = currentUser?currentUser.name:'Admin';
-  db.collection('gi_logs').add({equipId:loggingEquipId,taskId:loggingTaskId,date:date,hours:hours||null,notes:notes,by:by,createdAt:new Date().toISOString()});
-  // Update lastDone on task; also save lastDoneHours for hours-based tracking
-  var taskUpdate = {lastDone:date,updatedAt:new Date().toISOString(),updatedBy:by};
-  var loggedTask = tasks.find(function(t){ return t.id===loggingTaskId; });
-  if(loggedTask && loggedTask.intervalType==='hours' && hours){
-    taskUpdate.lastDoneHours = parseFloat(hours);
+  var logData = {equipId:loggingEquipId,taskId:loggingTaskId,date:date,hours:hours||null,notes:notes,by:by,createdAt:new Date().toISOString(),costMode:costMode};
+  if(costMode==='simple'){
+    var sv = document.getElementById('cost-simple-val').value;
+    if(sv) logData.costSimple = parseFloat(sv)||0;
+  } else {
+    var validItems = costItems.filter(function(it){ return it.desc||it.amount; });
+    if(validItems.length) logData.costItems = validItems;
   }
-  db.collection('gi_tasks').doc(loggingTaskId).update(taskUpdate);
+  db.collection('gi_logs').add(logData);
+  db.collection('gi_tasks').doc(loggingTaskId).update({lastDone:date,updatedAt:new Date().toISOString(),updatedBy:by});
   closeModal('modal-log');
   showToast(T('Logged! ✅','Registrado! ✅'));
 }
@@ -880,12 +885,6 @@ function promptDeleteTask(equipId,taskId){
   document.getElementById('modal-delete').classList.add('open');
 }
 window.promptDeleteTask = promptDeleteTask;
-function promptDeleteEquip(equipId){
-  pendingDeleteType='equipment'; pendingDeleteId=equipId;
-  document.getElementById('modal-delete-msg').textContent=T('Delete this equipment and ALL its tasks and logs? This cannot be undone.','Excluir este equipamento e TODAS as tarefas e registros? Isso não pode ser desfeito.');
-  document.getElementById('modal-delete').classList.add('open');
-}
-window.promptDeleteEquip = promptDeleteEquip;
 function promptDeleteLog(logId){
   pendingDeleteType='log'; pendingDeleteId=logId;
   document.getElementById('modal-delete-msg').textContent=T('Delete this log entry?','Excluir este registro?');
@@ -893,17 +892,9 @@ function promptDeleteLog(logId){
 }
 window.promptDeleteLog = promptDeleteLog;
 function confirmDelete(){
-  if(pendingDeleteType==='equipment'){
-    var eqTasks = tasks.filter(function(t){ return t.equipId===pendingDeleteId; });
-    eqTasks.forEach(function(t){
-      logs.filter(function(l){ return l.taskId===t.id; }).forEach(function(l){
-        db.collection('gi_logs').doc(l.id).delete();
-      });
-      db.collection('gi_tasks').doc(t.id).delete();
-    });
-    db.collection('gi_equipment').doc(pendingDeleteId).delete();
-  } else if(pendingDeleteType==='task'){
+  if(pendingDeleteType==='task'){
     db.collection('gi_tasks').doc(pendingDeleteId).delete();
+    // Also delete associated logs
     logs.filter(function(l){return l.taskId===pendingDeleteId;}).forEach(function(l){ db.collection('gi_logs').doc(l.id).delete(); });
   } else if(pendingDeleteType==='log'){
     db.collection('gi_logs').doc(pendingDeleteId).delete();
@@ -948,25 +939,6 @@ auth.onAuthStateChanged(function(user){
     showScreen('login');
   }
 });
-
-// Wire photo label click for Android
-document.addEventListener('DOMContentLoaded', function(){
-  var lbl = document.getElementById('eq-photo-label');
-  if(lbl){
-    lbl.addEventListener('click', function(){
-      document.getElementById('eq-photo-input').click();
-    });
-  }
-});
-
-// ── SERVICE WORKER REGISTRATION ──
-if('serviceWorker' in navigator){
-  window.addEventListener('load', function(){
-    navigator.serviceWorker.register('/GreenIdea-Maintenance/sw.js')
-      .then(function(reg){ console.log('SW registered:', reg.scope); })
-      .catch(function(err){ console.log('SW error:', err); });
-  });
-}
 </script>
 </body>
 </html>
