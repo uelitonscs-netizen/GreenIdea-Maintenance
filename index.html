@@ -86,16 +86,10 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:1
 /* CALENDAR */
 .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:12px;}
 .cal-day-header{text-align:center;font-size:10px;font-weight:700;color:var(--muted);padding:4px 0;}
-.cal-day{aspect-ratio:1;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;cursor:pointer;position:relative;}
+.cal-day{aspect-ratio:1;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;cursor:pointer;position:relative;overflow:hidden;}
 .cal-day.today{background:var(--green);color:#fff;}
-.cal-day.has-event::after{content:'';position:absolute;bottom:3px;left:50%;transform:translateX(-50%);width:4px;height:4px;border-radius:50%;background:var(--amber);}
-.cal-day.today.has-event::after{background:#fff;}
-.cal-day.other-month{color:#d1d5db;}
+.cal-day.other-month{color:#d1d5db;pointer-events:none;}
 .cal-day:hover:not(.today){background:#f3f4f6;}
-/* Due date dots */
-.cal-day.has-due::before{content:'';position:absolute;top:3px;right:3px;width:5px;height:5px;border-radius:50%;background:var(--red);}
-.cal-day.has-warn::before{content:'';position:absolute;top:3px;right:3px;width:5px;height:5px;border-radius:50%;background:var(--amber);}
-.cal-day.has-future::before{content:'';position:absolute;top:3px;right:3px;width:5px;height:5px;border-radius:50%;background:var(--green);}
 /* Calendar legend */
 .cal-legend{display:flex;gap:10px;font-size:11px;color:var(--muted);margin-bottom:10px;flex-wrap:wrap;}
 .cal-legend-dot{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:3px;vertical-align:middle;}
@@ -681,15 +675,14 @@ function renderCalendar(){
     var hasLog = logDates[dateStr];
     var dueType = dueDates[dateStr]; // 'due' | 'warn' | 'future' | undefined
 
-    // Dot colors: top-right = due indicator, bottom-center = done indicator
     var topDot = '';
-    if(dueType==='due')    topDot = '<span style="position:absolute;top:2px;right:2px;width:6px;height:6px;border-radius:50%;background:var(--red);display:block"></span>';
-    else if(dueType==='warn')   topDot = '<span style="position:absolute;top:2px;right:2px;width:6px;height:6px;border-radius:50%;background:var(--amber);display:block"></span>';
-    else if(dueType==='future') topDot = '<span style="position:absolute;top:2px;right:2px;width:6px;height:6px;border-radius:50%;background:var(--green);display:block"></span>';
+    if(dueType==='due')    topDot = '<span style="position:absolute;top:2px;right:2px;width:6px;height:6px;border-radius:50%;background:var(--red);pointer-events:none"></span>';
+    else if(dueType==='warn')   topDot = '<span style="position:absolute;top:2px;right:2px;width:6px;height:6px;border-radius:50%;background:var(--amber);pointer-events:none"></span>';
+    else if(dueType==='future') topDot = '<span style="position:absolute;top:2px;right:2px;width:6px;height:6px;border-radius:50%;background:var(--green);pointer-events:none"></span>';
 
-    var botDot = hasLog ? '<span style="position:absolute;bottom:2px;left:50%;transform:translateX(-50%);width:5px;height:5px;border-radius:50%;background:'+(isToday?'#fff':'var(--amber)')+';display:block"></span>' : '';
+    var botDot = hasLog ? '<span style="position:absolute;bottom:2px;left:50%;margin-left:-3px;width:5px;height:5px;border-radius:50%;background:'+(isToday?'#fff':'var(--amber)')+';pointer-events:none"></span>' : '';
 
-    cells += '<div class="cal-day'+(isToday?' today':'')+'" style="position:relative;" data-date="'+dateStr+'" onclick="calDayClick(this.dataset.date)">'+d+topDot+botDot+'</div>';
+    cells += '<div class="cal-day'+(isToday?' today':'')+'" data-date="'+dateStr+'" onclick="calDayClick(this.dataset.date)">'+d+topDot+botDot+'</div>';
   }
   var remaining = 42 - first - daysInMonth;
   for(var n=1;n<=remaining;n++) cells += '<div class="cal-day other-month">'+n+'</div>';
