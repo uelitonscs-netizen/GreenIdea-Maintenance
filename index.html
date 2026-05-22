@@ -679,8 +679,17 @@ function renderCalendar(){
     var dateStr = calYear+'-'+String(calMonth+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
     var isToday = dateStr===todayStr;
     var hasLog = logDates[dateStr];
-    var dClass = dueDates[dateStr]==='due' ? ' has-due' : (dueDates[dateStr]==='warn' ? ' has-warn' : (dueDates[dateStr]==='future' ? ' has-future' : ''));
-    cells += '<div class="cal-day'+(isToday?' today':'')+(hasLog?' has-event':'')+dClass+'" data-date="'+dateStr+'" onclick="calDayClick(this.dataset.date)">'+d+'</div>';
+    var dueType = dueDates[dateStr]; // 'due' | 'warn' | 'future' | undefined
+
+    // Dot colors: top-right = due indicator, bottom-center = done indicator
+    var topDot = '';
+    if(dueType==='due')    topDot = '<span style="position:absolute;top:2px;right:2px;width:6px;height:6px;border-radius:50%;background:var(--red);display:block"></span>';
+    else if(dueType==='warn')   topDot = '<span style="position:absolute;top:2px;right:2px;width:6px;height:6px;border-radius:50%;background:var(--amber);display:block"></span>';
+    else if(dueType==='future') topDot = '<span style="position:absolute;top:2px;right:2px;width:6px;height:6px;border-radius:50%;background:var(--green);display:block"></span>';
+
+    var botDot = hasLog ? '<span style="position:absolute;bottom:2px;left:50%;transform:translateX(-50%);width:5px;height:5px;border-radius:50%;background:'+(isToday?'#fff':'var(--amber)')+';display:block"></span>' : '';
+
+    cells += '<div class="cal-day'+(isToday?' today':'')+'" style="position:relative;" data-date="'+dateStr+'" onclick="calDayClick(this.dataset.date)">'+d+topDot+botDot+'</div>';
   }
   var remaining = 42 - first - daysInMonth;
   for(var n=1;n<=remaining;n++) cells += '<div class="cal-day other-month">'+n+'</div>';
