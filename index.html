@@ -92,6 +92,12 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:1
 .cal-day.today.has-event::after{background:#fff;}
 .cal-day.other-month{color:#d1d5db;}
 .cal-day:hover:not(.today){background:#f3f4f6;}
+/* Due date dots */
+.cal-day.has-due::before{content:'';position:absolute;top:3px;right:3px;width:5px;height:5px;border-radius:50%;background:var(--red);}
+.cal-day.has-warn::before{content:'';position:absolute;top:3px;right:3px;width:5px;height:5px;border-radius:50%;background:var(--amber);}
+/* Calendar legend */
+.cal-legend{display:flex;gap:14px;font-size:11px;color:var(--muted);margin-bottom:10px;flex-wrap:wrap;}
+.cal-legend-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:4px;vertical-align:middle;}
 
 /* TOAST */
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#111;color:#fff;padding:10px 20px;border-radius:99px;font-size:13px;font-weight:600;z-index:9999;display:none;white-space:nowrap;}
@@ -191,6 +197,11 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:1
       <button onclick="calNav(-1)" style="background:transparent;border:1px solid var(--border2);border-radius:8px;padding:6px 12px;cursor:pointer;font-size:16px">‹</button>
       <div id="cal-title" style="font-size:16px;font-weight:800"></div>
       <button onclick="calNav(1)" style="background:transparent;border:1px solid var(--border2);border-radius:8px;padding:6px 12px;cursor:pointer;font-size:16px">›</button>
+    </div>
+    <div class="cal-legend">
+      <span><span class="cal-legend-dot" style="background:var(--amber)"></span><span class="t" data-en="Maintenance done" data-pt="Manutenção feita">Maintenance done</span></span>
+      <span><span class="cal-legend-dot" style="background:var(--red)"></span><span class="t" data-en="Due / Overdue" data-pt="Vence / Vencido">Due / Overdue</span></span>
+      <span><span class="cal-legend-dot" style="background:#f59e0b"></span><span class="t" data-en="Due soon" data-pt="Próximo">Due soon</span></span>
     </div>
     <div class="cal-grid" id="cal-headers"></div>
     <div class="cal-grid" id="cal-grid"></div>
@@ -635,9 +646,23 @@ function renderCalendar(){
   var daysInMonth = new Date(calYear,calMonth+1,0).getDate();
   var daysInPrev = new Date(calYear,calMonth,0).getDate();
   var todayStr = localDateStr();
-  // Build set of dates with logs
+
+  // Dates with logs (amber dot bottom)
   var logDates = {};
-  logs.forEach(function(l){ logDates[l.date]=1; });
+  logs.forEach(function(l){ if(l.date) logDates[l.date]=1; });
+
+  // Due dates from tasks (red/amber dot top-right)
+  var dueDates = {}; // dateStr -> 'due' or 'warn'
+  tasks.forEach(function(t){
+    var due = getTaskDueDate(t);
+    if(!due) return;
+    var dStr = due.substring(0,10);
+    var days2 = daysDiff(dStr);
+    if(days2 < 0) dueDates[dStr] = 'due';
+    else if(days2 <= 14) { if(dueDates[dStr]!=='due') dueDates[dStr]='warn'; }
+    else dueDates[dStr] = dueDates[dStr] || 'ok';
+  });
+
   var grid = document.getElementById('cal-grid');
   var cells = '';
   for(var i=0;i<first;i++){
@@ -648,7 +673,8 @@ function renderCalendar(){
     var dateStr = calYear+'-'+String(calMonth+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
     var isToday = dateStr===todayStr;
     var hasLog = logDates[dateStr];
-    cells += '<div class="cal-day'+(isToday?' today':'')+(hasLog?' has-event':'')+'" data-date="'+dateStr+'" onclick="calDayClick(this.dataset.date)">'+d+'</div>';
+    var dueClass = dueDates[dateStr]==='due' ? ' has-due' : (dueDates[dateStr]==='warn' ? ' has-warn' : '');
+    cells += '<div class="cal-day'+(isToday?' today':'')+(hasLog?' has-event':'')+dueClass+'" data-date="'+dateStr+'" onclick="calDayClick(this.dataset.date)">'+d+'</div>';
   }
   var remaining = 42 - first - daysInMonth;
   for(var n=1;n<=remaining;n++) cells += '<div class="cal-day other-month">'+n+'</div>';
@@ -656,20 +682,47 @@ function renderCalendar(){
 }
 function calNav(dir){ calMonth+=dir; if(calMonth>11){calMonth=0;calYear++;} if(calMonth<0){calMonth=11;calYear--;} renderCalendar(); }
 window.calNav = calNav;
+
 function calDayClick(date){
   var dayLogs = logs.filter(function(l){ return l.date===date; });
+  // Due tasks on this date
+  var dueTasks = tasks.filter(function(t){
+    var due = getTaskDueDate(t);
+    return due && due.substring(0,10)===date;
+  });
   var detail = document.getElementById('cal-day-detail');
-  if(!dayLogs.length){ detail.innerHTML=''; return; }
-  detail.innerHTML = '<div class="card"><div class="section-title">'+fmtDate(date)+'</div>'+
-    dayLogs.map(function(l){
+  if(!dayLogs.length && !dueTasks.length){ detail.innerHTML=''; return; }
+  var html = '<div class="card"><div class="section-title">'+fmtDate(date)+'</div>';
+  if(dueTasks.length){
+    html += dueTasks.map(function(t){
+      var eq = equipment.find(function(e){ return e.id===t.equipId; });
+      var st = getTaskStatus(t);
+      return '<div style="padding:8px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center">'+
+        '<div>'+
+          '<div style="font-weight:700;font-size:13px">🔔 '+(eq?eq.name+' — ':'')+t.name+'</div>'+
+          '<div style="font-size:11px;margin-top:2px">'+statusBadge(t)+'</div>'+
+        '</div>'+
+        '<button onclick="openLogModal(\''+t.equipId+'\',\''+t.id+'\')" class="btn sm amber" style="flex-shrink:0">'+T('Log','Registrar')+'</button>'+
+      '</div>';
+    }).join('');
+  }
+  if(dayLogs.length){
+    html += dayLogs.map(function(l){
       var t = tasks.find(function(tk){ return tk.id===l.taskId; });
       var eq = equipment.find(function(e){ return e.id===l.equipId; });
+      var cost = getTotalCost(l);
       return '<div style="padding:8px 0;border-bottom:1px solid var(--border)">'+
-        '<div style="font-weight:700;font-size:13px">'+(t?t.name:T('Maintenance','Manutenção'))+'</div>'+
+        '<div style="display:flex;justify-content:space-between">'+
+          '<div style="font-weight:700;font-size:13px">✅ '+(t?t.name:T('Maintenance','Manutenção'))+'</div>'+
+          (cost?'<span class="cost-badge">'+fmtCurrency(cost)+'</span>':'')+
+        '</div>'+
         '<div style="font-size:12px;color:var(--muted)">'+(eq?eq.name:'')+(l.hours?' · '+l.hours+'h':'')+(l.notes?' · '+l.notes:'')+'</div>'+
         '<div style="font-size:11px;color:var(--muted);margin-top:2px">'+T('By','Por')+': '+(l.by||'—')+'</div>'+
       '</div>';
-    }).join('')+'</div>';
+    }).join('');
+  }
+  html += '</div>';
+  detail.innerHTML = html;
 }
 window.calDayClick = calDayClick;
 
@@ -920,21 +973,35 @@ function requestNotifPermission(){
 }
 function checkNotifications(){
   if(!('Notification' in window) || Notification.permission!=='granted') return;
+  var today = localDateStr();
   tasks.forEach(function(t){
-    var status=getTaskStatus(t);
-    if(status==='due'||status==='warn'){
-      var eq=equipment.find(function(e){return e.id===t.equipId;});
-      var key='gi_notif_'+t.id+'_'+localDateStr();
+    var eq = equipment.find(function(e){ return e.id===t.equipId; });
+    var eqName = eq ? eq.name : '';
+    var status = getTaskStatus(t);
+    var due = getTaskDueDate(t);
+    if(!due) return;
+    var days = daysDiff(due);
+
+    // Fire notifications at: overdue, day-of, 3 days before, 7 days before
+    var triggers = [];
+    if(days < 0)  triggers.push({key:'overdue', msg: eqName+': '+t.name+' '+T('está VENCIDO há','is OVERDUE by')+' '+Math.abs(days)+' '+T('dias','days')+'!', urgent:true});
+    if(days === 0) triggers.push({key:'today',   msg: eqName+': '+t.name+' '+T('vence HOJE!','is due TODAY!'), urgent:true});
+    if(days === 3) triggers.push({key:'3d',      msg: eqName+': '+t.name+' '+T('vence em 3 dias','due in 3 days'), urgent:false});
+    if(days === 7) triggers.push({key:'7d',      msg: eqName+': '+t.name+' '+T('vence em 7 dias','due in 7 days'), urgent:false});
+
+    triggers.forEach(function(tr){
+      var key = 'gi_notif_'+t.id+'_'+tr.key+'_'+today;
       if(!localStorage.getItem(key)){
-        var due=getTaskDueDate(t);
-        var days=daysDiff(due);
-        var msg=status==='due'?
-          (eq?eq.name+': ':'')+t.name+' '+T('is overdue!','está vencido!'):
-          (eq?eq.name+': ':'')+t.name+' '+T('due in','vence em')+' '+days+' '+T('days','dias');
-        new Notification('GI Maintenance', {body:msg, icon:'/GreenIdea-Maintenance/icon-192.png'});
+        new Notification('🔧 GI Maintenance', {
+          body: tr.msg,
+          icon: '/GreenIdea-Maintenance/icon-192.png',
+          badge: '/GreenIdea-Maintenance/icon-192.png',
+          tag: 'gi_'+t.id+'_'+tr.key,
+          requireInteraction: tr.urgent
+        });
         localStorage.setItem(key,'1');
       }
-    }
+    });
   });
 }
 
