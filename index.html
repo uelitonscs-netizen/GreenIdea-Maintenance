@@ -465,9 +465,17 @@ function startListeners(){
     tasks=s.docs.map(function(d){return Object.assign({id:d.id},d.data());});
     renderAll();
   });
-  db.collection('gi_logs').orderBy('date','desc').onSnapshot(function(s){
+  db.collection('gi_logs').orderBy('createdAt','desc').onSnapshot(function(s){
     logs=s.docs.map(function(d){return Object.assign({id:d.id},d.data());});
+    // Sort by date desc in JS as fallback (handles docs without date field)
+    logs.sort(function(a,b){
+      var da = a.date||a.createdAt||'';
+      var db2 = b.date||b.createdAt||'';
+      return db2.localeCompare(da);
+    });
     renderAll();
+  },function(err){
+    console.error('Logs listener error:', err);
   });
 }
 
