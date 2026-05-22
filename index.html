@@ -95,9 +95,10 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:1
 /* Due date dots */
 .cal-day.has-due::before{content:'';position:absolute;top:3px;right:3px;width:5px;height:5px;border-radius:50%;background:var(--red);}
 .cal-day.has-warn::before{content:'';position:absolute;top:3px;right:3px;width:5px;height:5px;border-radius:50%;background:var(--amber);}
+.cal-day.has-future::before{content:'';position:absolute;top:3px;right:3px;width:5px;height:5px;border-radius:50%;background:var(--green);}
 /* Calendar legend */
-.cal-legend{display:flex;gap:14px;font-size:11px;color:var(--muted);margin-bottom:10px;flex-wrap:wrap;}
-.cal-legend-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:4px;vertical-align:middle;}
+.cal-legend{display:flex;gap:10px;font-size:11px;color:var(--muted);margin-bottom:10px;flex-wrap:wrap;}
+.cal-legend-dot{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:3px;vertical-align:middle;}
 
 /* TOAST */
 .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#111;color:#fff;padding:10px 20px;border-radius:99px;font-size:13px;font-weight:600;z-index:9999;display:none;white-space:nowrap;}
@@ -199,9 +200,10 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:1
       <button onclick="calNav(1)" style="background:transparent;border:1px solid var(--border2);border-radius:8px;padding:6px 12px;cursor:pointer;font-size:16px">›</button>
     </div>
     <div class="cal-legend">
-      <span><span class="cal-legend-dot" style="background:var(--amber)"></span><span class="t" data-en="Maintenance done" data-pt="Manutenção feita">Maintenance done</span></span>
-      <span><span class="cal-legend-dot" style="background:var(--red)"></span><span class="t" data-en="Due / Overdue" data-pt="Vence / Vencido">Due / Overdue</span></span>
-      <span><span class="cal-legend-dot" style="background:#f59e0b"></span><span class="t" data-en="Due soon" data-pt="Próximo">Due soon</span></span>
+      <span><span class="cal-legend-dot" style="background:var(--amber)"></span><span class="t" data-en="Done" data-pt="Feito">Done</span></span>
+      <span><span class="cal-legend-dot" style="background:var(--red)"></span><span class="t" data-en="Due/Overdue" data-pt="Vencido">Due/Overdue</span></span>
+      <span><span class="cal-legend-dot" style="background:var(--amber)"></span><span class="t" data-en="Due soon" data-pt="Próximo">Due soon ≤14d</span></span>
+      <span><span class="cal-legend-dot" style="background:var(--green)"></span><span class="t" data-en="Scheduled" data-pt="Agendado">Scheduled</span></span>
     </div>
     <div class="cal-grid" id="cal-headers"></div>
     <div class="cal-grid" id="cal-grid"></div>
@@ -651,17 +653,21 @@ function renderCalendar(){
   var logDates = {};
   logs.forEach(function(l){ if(l.date) logDates[l.date]=1; });
 
-  // Due dates from tasks (red/amber dot top-right)
-  var dueDates = {}; // dateStr -> 'due' or 'warn'
+  // Due dates from tasks — show ALL future due dates, not just ≤14 days
+  var dueDates = {}; // dateStr -> 'due' | 'warn' | 'future'
   tasks.forEach(function(t){
     var due = getTaskDueDate(t);
     if(!due) return;
     var dStr = due.substring(0,10);
-    var days2 = daysDiff(dStr);
-    if(days2 < 0) dueDates[dStr] = 'due';
-    else if(days2 <= 14) { if(dueDates[dStr]!=='due') dueDates[dStr]='warn'; }
-    else dueDates[dStr] = dueDates[dStr] || 'ok';
+    var d = daysDiff(dStr);
+    if(d < 0)        dueDates[dStr] = 'due';
+    else if(d === 0) dueDates[dStr] = 'due';
+    else if(d <= 14) { if(dueDates[dStr]!=='due') dueDates[dStr]='warn'; }
+    else             { if(!dueDates[dStr]) dueDates[dStr]='future'; }
   });
+
+  // Clear day detail when re-rendering (month nav)
+  document.getElementById('cal-day-detail').innerHTML = '';
 
   var grid = document.getElementById('cal-grid');
   var cells = '';
@@ -673,14 +679,19 @@ function renderCalendar(){
     var dateStr = calYear+'-'+String(calMonth+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
     var isToday = dateStr===todayStr;
     var hasLog = logDates[dateStr];
-    var dueClass = dueDates[dateStr]==='due' ? ' has-due' : (dueDates[dateStr]==='warn' ? ' has-warn' : '');
-    cells += '<div class="cal-day'+(isToday?' today':'')+(hasLog?' has-event':'')+dueClass+'" data-date="'+dateStr+'" onclick="calDayClick(this.dataset.date)">'+d+'</div>';
+    var dClass = dueDates[dateStr]==='due' ? ' has-due' : (dueDates[dateStr]==='warn' ? ' has-warn' : (dueDates[dateStr]==='future' ? ' has-future' : ''));
+    cells += '<div class="cal-day'+(isToday?' today':'')+(hasLog?' has-event':'')+dClass+'" data-date="'+dateStr+'" onclick="calDayClick(this.dataset.date)">'+d+'</div>';
   }
   var remaining = 42 - first - daysInMonth;
   for(var n=1;n<=remaining;n++) cells += '<div class="cal-day other-month">'+n+'</div>';
   grid.innerHTML = cells;
 }
-function calNav(dir){ calMonth+=dir; if(calMonth>11){calMonth=0;calYear++;} if(calMonth<0){calMonth=11;calYear--;} renderCalendar(); }
+function calNav(dir){
+  calMonth+=dir;
+  if(calMonth>11){calMonth=0;calYear++;}
+  if(calMonth<0){calMonth=11;calYear--;}
+  renderCalendar();
+}
 window.calNav = calNav;
 
 function calDayClick(date){
