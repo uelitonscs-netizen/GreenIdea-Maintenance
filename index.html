@@ -293,6 +293,35 @@ body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:1
   </div>
 </div>
 
+<!-- MODAL: EDIT LOG -->
+<div id="modal-edit-log" class="modal-overlay">
+  <div class="modal">
+    <div class="modal-title t" data-en="Edit Log Entry" data-pt="Editar Registro">Edit Log Entry</div>
+    <div class="fg"><label class="t" data-en="Date" data-pt="Data">Date</label><input id="edit-log-date" type="date"/></div>
+    <div class="fg"><label class="t" data-en="Hours at service (optional)" data-pt="Horímetro (opcional)">Hours at service</label><input id="edit-log-hours" type="number" placeholder="e.g. 1250"/></div>
+    <div class="fg">
+      <label class="t" data-en="Cost (optional)" data-pt="Custo (opcional)">Cost (optional)</label>
+      <div class="cost-toggle">
+        <button id="edit-cost-simple-btn" onclick="setEditCostMode('simple')" class="active">💵 <span class="t" data-en="Simple" data-pt="Simples">Simple</span></button>
+        <button id="edit-cost-detail-btn" onclick="setEditCostMode('detail')">📋 <span class="t" data-en="Itemized" data-pt="Detalhado">Itemized</span></button>
+      </div>
+      <div id="edit-cost-simple-wrap">
+        <input id="edit-cost-simple-val" type="number" min="0" step="0.01" placeholder="$ 0.00"/>
+      </div>
+      <div id="edit-cost-detail-wrap" style="display:none">
+        <div id="edit-cost-items-list"></div>
+        <button onclick="addEditCostItem()" style="width:100%;padding:8px;border:1px dashed var(--border2);border-radius:8px;background:transparent;font-size:12px;font-weight:700;color:var(--muted);cursor:pointer;font-family:var(--font);">+ <span class="t" data-en="Add item" data-pt="Adicionar item">Add item</span></button>
+        <div class="cost-total" id="edit-cost-detail-total">Total: $0.00</div>
+      </div>
+    </div>
+    <div class="fg"><label class="t" data-en="Notes" data-pt="Notas">Notes</label><textarea id="edit-log-notes" placeholder="What was done..."></textarea></div>
+    <div class="modal-actions">
+      <button class="btn" onclick="saveEditLog()">💾 <span class="t" data-en="Save Changes" data-pt="Salvar">Save Changes</span></button>
+      <button class="btn ghost" onclick="closeModal('modal-edit-log')"><span class="t" data-en="Cancel" data-pt="Cancelar">Cancel</span></button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL: DELETE CONFIRM -->
 <div id="modal-delete" class="modal-overlay">
   <div class="modal">
@@ -776,13 +805,105 @@ function renderHistory(){
         '<div style="text-align:right;flex-shrink:0;margin-left:12px">'+
           '<div style="font-weight:700;font-size:13px">'+fmtDate(l.date)+'</div>'+
           (cost?'<div class="cost-badge" style="margin-top:4px">'+fmtCurrency(cost)+'</div>':'')+
-          '<br><button data-lid="'+l.id+'" onclick="promptDeleteLog(this.dataset.lid)" style="background:transparent;border:none;color:var(--muted);cursor:pointer;font-size:18px;margin-top:4px">✕</button>'+
+          '<div style="display:flex;gap:6px;justify-content:flex-end;margin-top:6px">'+
+            '<button data-lid="'+l.id+'" onclick="openEditLogModal(this.dataset.lid)" style="background:transparent;border:1px solid var(--border2);border-radius:6px;padding:4px 8px;font-size:13px;cursor:pointer">✏️</button>'+
+            '<button data-lid="'+l.id+'" onclick="promptDeleteLog(this.dataset.lid)" style="background:transparent;border:1px solid #fcc;border-radius:6px;padding:4px 8px;font-size:13px;cursor:pointer;color:var(--red)">✕</button>'+
+          '</div>'+
         '</div>'+
       '</div>'+
     '</div>';
   }).join('') + (grandTotal?'<div style="text-align:right;font-weight:800;font-size:14px;padding:8px 4px;color:var(--green)">Total: '+fmtCurrency(grandTotal)+'</div>':'');
 }
 window.renderHistory = renderHistory;
+
+// ── EDIT LOG ──
+var editingLogId = null;
+var editCostMode = 'simple';
+var editCostItems = [];
+
+function setEditCostMode(mode){
+  editCostMode = mode;
+  document.getElementById('edit-cost-simple-btn').classList.toggle('active', mode==='simple');
+  document.getElementById('edit-cost-detail-btn').classList.toggle('active', mode==='detail');
+  document.getElementById('edit-cost-simple-wrap').style.display = mode==='simple'?'block':'none';
+  document.getElementById('edit-cost-detail-wrap').style.display = mode==='detail'?'block':'none';
+}
+window.setEditCostMode = setEditCostMode;
+
+function addEditCostItem(desc, amt){
+  editCostItems.push({desc:desc||'', amount:amt||''});
+  renderEditCostItems();
+}
+window.addEditCostItem = addEditCostItem;
+
+function removeEditCostItem(idx){
+  editCostItems.splice(idx,1);
+  renderEditCostItems();
+}
+window.removeEditCostItem = removeEditCostItem;
+
+function renderEditCostItems(){
+  document.getElementById('edit-cost-items-list').innerHTML = editCostItems.map(function(it,i){
+    return '<div class="cost-item-row">'+
+      '<input type="text" placeholder="'+T('Description','Descrição')+'" value="'+it.desc+'" oninput="editCostItems['+i+'].desc=this.value"/>'+
+      '<input type="number" class="cost-amt" placeholder="0.00" min="0" step="0.01" value="'+it.amount+'" oninput="editCostItems['+i+'].amount=this.value;updateEditCostTotal()"/>'+
+      '<button class="cost-remove-btn" onclick="removeEditCostItem('+i+')">✕</button>'+
+    '</div>';
+  }).join('');
+  updateEditCostTotal();
+}
+
+function updateEditCostTotal(){
+  var total = editCostItems.reduce(function(s,it){ return s+(parseFloat(it.amount)||0); },0);
+  var el = document.getElementById('edit-cost-detail-total');
+  if(el) el.textContent = 'Total: '+fmtCurrency(total);
+}
+window.updateEditCostTotal = updateEditCostTotal;
+
+function openEditLogModal(logId){
+  var l = logs.find(function(x){ return x.id===logId; });
+  if(!l) return;
+  editingLogId = logId;
+  document.getElementById('edit-log-date').value = l.date||'';
+  document.getElementById('edit-log-hours').value = l.hours||'';
+  document.getElementById('edit-log-notes').value = l.notes||'';
+  // Cost
+  var mode = l.costMode||'simple';
+  editCostItems = (l.costItems||[]).map(function(it){ return {desc:it.desc||'',amount:it.amount||''}; });
+  setEditCostMode(mode);
+  if(mode==='simple'){
+    document.getElementById('edit-cost-simple-val').value = l.costSimple||'';
+  } else {
+    renderEditCostItems();
+  }
+  document.getElementById('modal-edit-log').classList.add('open');
+}
+window.openEditLogModal = openEditLogModal;
+
+function saveEditLog(){
+  var date = document.getElementById('edit-log-date').value;
+  var hours = document.getElementById('edit-log-hours').value;
+  var notes = document.getElementById('edit-log-notes').value.trim();
+  if(!date) return showToast(T('Select a date','Selecione a data'),'err');
+  var data = {date:date, hours:hours||null, notes:notes, costMode:editCostMode, updatedAt:new Date().toISOString()};
+  if(editCostMode==='simple'){
+    var sv = document.getElementById('edit-cost-simple-val').value;
+    data.costSimple = sv ? parseFloat(sv)||0 : null;
+    data.costItems = null;
+  } else {
+    data.costItems = editCostItems.filter(function(it){ return it.desc||it.amount; });
+    data.costSimple = null;
+  }
+  // Also update lastDone on the task if date changed
+  var l = logs.find(function(x){ return x.id===editingLogId; });
+  if(l && l.taskId){
+    db.collection('gi_tasks').doc(l.taskId).update({lastDone:date, updatedAt:new Date().toISOString()});
+  }
+  db.collection('gi_logs').doc(editingLogId).update(data);
+  closeModal('modal-edit-log');
+  showToast(T('Updated! ✅','Atualizado! ✅'));
+}
+window.saveEditLog = saveEditLog;
 
 // ── EQUIPMENT MODALS ──
 function openAddEquipModal(){
