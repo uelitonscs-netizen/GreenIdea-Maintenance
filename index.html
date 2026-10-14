@@ -7,6 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes"/>
 <link rel="manifest" href="/GreenIdea-Maintenance/manifest.json"/>
 <title>GI Maintenance</title>
+<!-- GI Maintenance build v20261014-1000 (login checked by Firebase; no passwords in code) -->
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
 <style>
 :root{
@@ -362,10 +363,7 @@ var pendingDeleteType = null, pendingDeleteId = null, pendingDeleteEquipId = nul
 var calYear = new Date().getFullYear(), calMonth = new Date().getMonth();
 var currentUser = null;
 
-var ADMIN_PROFILES = {
-  'Yzis0313': {name:'Ueliton Silva'},
-  'Soeusei13':  {name:'Rafael Gazel'}
-};
+// Login is checked by Firebase (email + password typed by the user). No passwords in this file.
 
 // ── LANG ──
 function applyLang(){
@@ -447,21 +445,24 @@ function doLogin(){
   var pass = document.getElementById('login-pass').value;
   var btn = document.getElementById('login-btn');
   var err = document.getElementById('login-error');
-  var profile = ADMIN_PROFILES[pass];
-  if(!profile){ err.textContent = T('Invalid password','Senha incorreta'); err.style.display='block'; return; }
+  if(!email||!pass){ err.textContent = T('Enter email and password','Digite email e senha'); err.style.display='block'; return; }
   btn.disabled=true; btn.textContent=T('Signing in...','Entrando...'); err.style.display='none';
-  var firebasePass = 'Yzis0313';
-  auth.signInWithEmailAndPassword(email, firebasePass)
-    .then(function(){
+  auth.signInWithEmailAndPassword(email, pass)
+    .then(function(cred){
+      var u=(cred&&cred.user)||auth.currentUser||{};
+      var profile={name:(u.displayName||(String(u.email||email).toLowerCase()==='greenideainsulation@gmail.com'?'Ueliton Silva':String(u.email||email)))};
       currentUser = profile;
       localStorage.setItem('gi_session','admin');
       localStorage.setItem('gi_profile',JSON.stringify(profile));
+      document.getElementById('login-pass').value='';
       btn.disabled=false; btn.textContent='Sign In';
       startApp();
     })
-    .catch(function(){
+    .catch(function(e){
       btn.disabled=false; btn.textContent='Sign In';
-      err.textContent = T('Login failed','Falha no login'); err.style.display='block';
+      var c=String(e&&e.code||'');
+      err.textContent = (/wrong-password|invalid-credential|invalid-login|user-not-found|invalid-email/.test(c))?T('Wrong email or password','Email ou senha incorretos'):(/too-many/.test(c)?T('Too many tries — wait a few minutes','Muitas tentativas — espere alguns minutos'):T('Login failed','Falha no login'));
+      err.style.display='block';
     });
 }
 window.doLogin = doLogin;
